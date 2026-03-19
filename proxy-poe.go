@@ -217,11 +217,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No API key available", http.StatusUnauthorized)
 		return
 	}
-	log.Printf("Using API key source: %s", map[bool]string{true: "user-provided", false: "env POE_API_KEY"}[userAPIKey != ""])
 
 	// 处理 /v1/models 端点
 	if r.URL.Path == "/v1/models" && r.Method == "GET" {
-		log.Printf("Handling /v1/models request")
 		handleModelsRequest(w)
 		return
 	}
@@ -235,10 +233,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	log.Printf("========== Request from Cursor (Claude format) ==========")
-	log.Printf("Request body: %s", string(body))
-	log.Printf("==========================================================")
-
 	// 解析 Claude 格式请求
 	var claudeReq ClaudeRequest
 	if err := json.Unmarshal(body, &claudeReq); err != nil {
@@ -246,8 +240,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("Parsed Claude request - Model: %s, Stream: %v", claudeReq.Model, claudeReq.Stream)
 
 	// 转换为 OpenAI 格式
 	openAIReq, err := convertClaudeToOpenAI(claudeReq)
@@ -257,8 +249,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Using model: %s (from client request)", openAIReq.Model)
-
 	// 创建新的请求体
 	modifiedBody, err := json.Marshal(openAIReq)
 	if err != nil {
@@ -266,10 +256,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating modified request", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("========== Request to OpenAI ==========")
-	log.Printf("Modified request body: %s", string(modifiedBody))
-	log.Printf("========================================")
 
 	// 创建代理请求到 OpenAI
 	targetURL := openAIEndpoint + "/v1/chat/completions"
@@ -299,10 +285,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
-
-	log.Printf("========== OpenAI Response ==========")
-	log.Printf("Status: %d", resp.StatusCode)
-	log.Printf("=====================================")
 
 	// 处理错误响应
 	if resp.StatusCode >= 400 {
@@ -528,8 +510,6 @@ func convertClaudeToOpenAI(claudeReq ClaudeRequest) (*OpenAIRequest, error) {
 
 // 处理流式响应
 func handleStreamingResponse(w http.ResponseWriter, resp *http.Response, originalModel string) {
-	log.Printf("Starting streaming response handling")
-
 	// 设置流式响应头
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -602,14 +582,10 @@ func handleStreamingResponse(w http.ResponseWriter, resp *http.Response, origina
 			flusher.Flush()
 		}
 	}
-
-	log.Printf("Streaming response completed")
 }
 
 // 处理普通响应
 func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalModel string) {
-	log.Printf("Handling regular (non-streaming) response")
-
 	// 读取响应体
 	body, err := readResponse(resp)
 	if err != nil {
@@ -617,8 +593,6 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 		http.Error(w, "Error reading response from upstream", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("OpenAI response body: %s", string(body))
 
 	// 解析 OpenAI 响应
 	var openAIResp OpenAIResponse
@@ -639,19 +613,14 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 		return
 	}
 
-	log.Printf("Modified response body: %s", string(modifiedBody))
-
 	// 设置响应头并发送
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	w.Write(modifiedBody)
-	log.Printf("Modified response sent successfully")
 }
 
 // 处理模型列表请求
 func handleModelsRequest(w http.ResponseWriter) {
-	log.Printf("Handling models request")
-
 	response := map[string]interface{}{
 		"object": "list",
 		"data": []map[string]interface{}{
@@ -666,7 +635,6 @@ func handleModelsRequest(w http.ResponseWriter) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	log.Printf("Models response sent successfully")
 }
 
 // 读取响应（处理压缩）

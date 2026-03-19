@@ -126,10 +126,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	log.Printf("========== Request from Cursor ==========")
-	log.Printf("%s", string(body))
-	log.Printf("=========================================")
-
 	// Parse as generic map for field manipulation
 	var reqMap map[string]interface{}
 	if err := json.Unmarshal(body, &reqMap); err != nil {
@@ -145,7 +141,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		reqMap["model"] = originalModel
 	}
 	if mapped, ok := modelNameMap[originalModel]; ok {
-		log.Printf("Model name mapped: %s -> %s", originalModel, mapped)
 		reqMap["model"] = mapped
 	}
 
@@ -159,10 +154,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error serializing request", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("========== Request to Anthropic ==========")
-	log.Printf("%s", string(modifiedBody))
-	log.Printf("==========================================")
 
 	// Forward to Anthropic API
 	proxyReq, err := http.NewRequest("POST", anthropicEndpoint+"/v1/messages", bytes.NewReader(modifiedBody))
@@ -273,8 +264,6 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 		http.Error(w, "Error reading response", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Anthropic response: %s", string(body))
-
 	var aResp map[string]interface{}
 	if err := json.Unmarshal(body, &aResp); err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -345,7 +334,6 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 	}
 
 	out, _ := json.Marshal(oaiResp)
-	log.Printf("Response to Cursor: %s", string(out))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	w.Write(out)
@@ -353,7 +341,6 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 
 // handleStreamingResponse converts Anthropic SSE → OpenAI SSE
 func handleStreamingResponse(w http.ResponseWriter, resp *http.Response, originalModel string) {
-	log.Printf("Starting streaming response conversion")
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -505,7 +492,6 @@ func handleStreamingResponse(w http.ResponseWriter, resp *http.Response, origina
 			if flusher != nil {
 				flusher.Flush()
 			}
-			log.Printf("Streaming completed")
 			return
 		}
 	}
@@ -514,7 +500,6 @@ func handleStreamingResponse(w http.ResponseWriter, resp *http.Response, origina
 	if flusher != nil {
 		flusher.Flush()
 	}
-	log.Printf("Streaming completed (EOF)")
 }
 
 func convertStopReason(reason string) string {

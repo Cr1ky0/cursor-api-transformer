@@ -198,7 +198,6 @@ func convertToolChoice(choice interface{}) string {
 func convertMessages(messages []Message) []Message {
 	converted := make([]Message, len(messages))
 	for i, msg := range messages {
-		log.Printf("Converting message %d - Role: %s", i, msg.Role)
 		converted[i] = msg
 
 		// Convert array-format content to string format for DeepSeek
@@ -208,7 +207,6 @@ func convertMessages(messages []Message) []Message {
 
 		// Handle assistant messages with tool calls
 		if msg.Role == "assistant" && len(msg.ToolCalls) > 0 {
-			log.Printf("Processing assistant message with %d tool calls", len(msg.ToolCalls))
 			// DeepSeek expects tool_calls in a specific format
 			toolCalls := make([]ToolCall, len(msg.ToolCalls))
 			for j, tc := range msg.ToolCalls {
@@ -217,24 +215,14 @@ func convertMessages(messages []Message) []Message {
 					Type:     "function",
 					Function: tc.Function,
 				}
-				log.Printf("Tool call %d - ID: %s, Function: %s", j, tc.ID, tc.Function.Name)
-			}
+				}
 			converted[i].ToolCalls = toolCalls
 		}
 
 		// Handle function response messages
 		if msg.Role == "function" {
-			log.Printf("Converting function response to tool response")
 			// Convert to tool response format
 			converted[i].Role = "tool"
-		}
-	}
-
-	// Log the final converted messages
-	for i, msg := range converted {
-		log.Printf("Final message %d - Role: %s, Content: %s", i, msg.Role, truncateString(msg.GetContentString(), 50))
-		if len(msg.ToolCalls) > 0 {
-			log.Printf("Message %d has %d tool calls", i, len(msg.ToolCalls))
 		}
 	}
 
@@ -308,20 +296,14 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userAPIKey = deepseekAPIKey
-		log.Printf("No API key provided by user, using server API key")
 	} else {
-		log.Printf("Using API key provided by user")
 	}
 
 	// Handle /v1/models endpoint
 	if r.URL.Path == "/v1/models" && r.Method == "GET" {
-		log.Printf("Handling /v1/models request")
 		handleModelsRequest(w)
 		return
 	}
-
-	// Log headers for debugging
-	log.Printf("Request headers: %+v", r.Header)
 
 	// Read and log request body for debugging
 	var chatReq ChatRequest
@@ -335,12 +317,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(body, &chatReq); err != nil {
 		log.Printf("Error parsing request JSON: %v", err)
-		log.Printf("Raw request body: %s", string(body))
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("Parsed request: %+v", chatReq)
 
 	// Handle models endpoint
 	if r.URL.Path == "/v1/models" || r.URL.Path == "/models" {
@@ -365,8 +344,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	// Restore the body for further reading
 	r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	log.Printf("Request body: %s", string(body))
-
 	// Parse the request to check for streaming - reuse existing chatReq
 	if err := json.Unmarshal(body, &chatReq); err != nil {
 		log.Printf("Error parsing request JSON: %v", err)
@@ -374,15 +351,12 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Requested model: %s", chatReq.Model)
-
 	// 使用用户请求的模型，若为空则默认 deepseek-chat
 	requestModel := chatReq.Model
 	if requestModel == "" {
 		requestModel = deepseekChatModel
 	}
 	originalModel := requestModel
-	log.Printf("Using requested model: %s", requestModel)
 
 	// Convert to DeepSeek request format
 	deepseekReq := DeepSeekRequest{
@@ -430,10 +404,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("========== Request to DeepSeek ==========")
-	log.Printf("Modified request body: %s", string(modifiedBody))
-	log.Printf("==========================================")
-
 	// 发送请求，若失败则回退到 reasoner 模型
 	resp, usedModel, err := doDeepSeekRequestWithFallback(r, modifiedBody, deepseekReq, chatReq.Stream, userAPIKey)
 	if err != nil {
@@ -449,10 +419,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		originalModel = usedModel
 	}
 
-	log.Printf("========== DeepSeek Response ==========")
-	log.Printf("Status: %d", resp.StatusCode)
-	log.Printf("Headers: %v", resp.Header)
-
 	// Handle error responses
 	if resp.StatusCode >= 400 {
 		respBody, err := io.ReadAll(resp.Body)
@@ -461,9 +427,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error reading response", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("========== DeepSeek ERROR Response Body ==========")
-		log.Printf("%s", string(respBody))
-		log.Printf("===================================================")
 
 		// Forward the error response
 		for k, v := range resp.Header {
@@ -486,10 +449,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStreamingResponse(w http.ResponseWriter, r *http.Request, resp *http.Response, originalModel string) {
-	log.Printf("Starting streaming response handling with model: %s", originalModel)
-	log.Printf("Response status: %d", resp.StatusCode)
-	log.Printf("Response headers: %+v", resp.Header)
-
 	// Set headers for streaming response
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -568,15 +527,9 @@ func handleStreamingResponse(w http.ResponseWriter, r *http.Request, resp *http.
 			flusher.Flush()
 		}
 	}
-
-	log.Printf("Streaming response completed")
 }
 
 func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalModel string) {
-	log.Printf("Handling regular (non-streaming) response")
-	log.Printf("Response status: %d", resp.StatusCode)
-	log.Printf("Response headers: %+v", resp.Header)
-
 	// Read and log response body
 	body, err := readResponse(resp)
 	if err != nil {
@@ -584,8 +537,6 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 		http.Error(w, "Error reading response from upstream", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("Original response body: %s", string(body))
 
 	// Parse the DeepSeek response
 	var deepseekResp struct {
@@ -655,9 +606,7 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 
 		// Ensure tool calls are properly formatted in the message
 		if len(choice.Message.ToolCalls) > 0 {
-			log.Printf("Processing %d tool calls in choice %d", len(choice.Message.ToolCalls), i)
 			for j, tc := range choice.Message.ToolCalls {
-				log.Printf("Tool call %d: %+v", j, tc)
 				// Ensure the tool call has the required fields
 				if tc.Function.Name == "" {
 					log.Printf("Warning: Empty function name in tool call %d", j)
@@ -677,13 +626,9 @@ func handleRegularResponse(w http.ResponseWriter, resp *http.Response, originalM
 		return
 	}
 
-	log.Printf("Modified response body: %s", string(modifiedBody))
-
-	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	w.Write(modifiedBody)
-	log.Printf("Modified response sent successfully")
 }
 
 // isModelNotFoundError 判断响应是否为模型不存在的错误
@@ -738,7 +683,6 @@ func doDeepSeekRequestWithFallback(origReq *http.Request, body []byte, dsReq Dee
 		log.Printf("Error building proxy request: %v", err)
 		return nil, "", err
 	}
-	log.Printf("Forwarding to: %s (model: %s)", proxyReq.URL, dsReq.Model)
 
 	resp, err := client.Do(proxyReq)
 	if err == nil {
@@ -804,8 +748,6 @@ func copyHeaders(dst, src http.Header) {
 }
 
 func handleModelsRequest(w http.ResponseWriter) {
-	log.Printf("Handling models request")
-
 	// Get the requested model from the query parameters
 	response := ModelsResponse{
 		Object: "list",
@@ -833,7 +775,6 @@ func handleModelsRequest(w http.ResponseWriter) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	log.Printf("Models response sent successfully")
 }
 
 func readResponse(resp *http.Response) ([]byte, error) {
