@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,16 +17,21 @@ import (
 )
 
 const (
-	anthropicEndpoint     = "https://buzzai.cc"
-	anthropicVersion      = "2023-06-01"
-	defaultAnthropicModel = "claude-sonnet-4-5"
+	defaultAnthropicEndpoint = "https://api.anthropic.com"
+	anthropicVersion         = "2023-06-01"
+	defaultAnthropicModel    = "claude-sonnet-4-5"
 )
 
-var anthropicAPIKey string
+var (
+	anthropicAPIKey   string
+	anthropicEndpoint string
+)
 
 // modelNameMap maps client-provided model names to Anthropic API model IDs
 var modelNameMap = map[string]string{
 	"claude-sonnet-4.6": "claude-sonnet-4-6",
+	"claude-opus-4.6": "claude-sonnet-4-6",
+	"claude-sonnet-4.5": "claude-sonnet-4-5-20250929",
 }
 
 func init() {
@@ -36,16 +42,38 @@ func init() {
 	if anthropicAPIKey == "" {
 		log.Printf("Warning: ANTHROPIC_API_KEY not set, user must provide key in request")
 	}
+	anthropicEndpoint = strings.TrimRight(os.Getenv("ANTHROPIC_ENDPOINT"), "/")
+	if anthropicEndpoint == "" {
+		anthropicEndpoint = defaultAnthropicEndpoint
+	}
 	log.Printf("Initialized Anthropic proxy, endpoint: %s", anthropicEndpoint)
 }
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
 
-	port := os.Getenv("PORT")
+	// Command-line flags override env vars
+	flagEndpoint := flag.String("endpoint", "", "Anthropic API endpoint (overrides ANTHROPIC_ENDPOINT)")
+	flagPort := flag.String("port", "", "Listen port (overrides PORT env var)")
+	flagKey := flag.String("key", "", "Anthropic API key (overrides ANTHROPIC_API_KEY)")
+	flag.Parse()
+
+	if *flagEndpoint != "" {
+		anthropicEndpoint = strings.TrimRight(*flagEndpoint, "/")
+	}
+	if *flagKey != "" {
+		anthropicAPIKey = *flagKey
+	}
+
+	port := *flagPort
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
 	if port == "" {
 		port = "9000"
 	}
+
+	log.Printf("Using endpoint: %s", anthropicEndpoint)
 
 	server := &http.Server{
 		Addr:    ":" + port,
