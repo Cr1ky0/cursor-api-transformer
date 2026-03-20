@@ -89,9 +89,21 @@ docker build -t cursor-proxy:deepseek .
 docker run -d \
   -p 9000:9000 \
   -e ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY \
+  -e ANTHROPIC_ENDPOINT=https://your-endpoint.com \
   --name cursor-proxy \
   cursor-proxy:o2a-max
 ```
+
+也可以在构建阶段将配置烤入镜像（适合固定部署环境，注意 API Key 会留在镜像层中，不建议用于密钥）：
+
+```bash
+docker build \
+  --build-arg PROXY_VARIANT=o2a-max \
+  --build-arg ANTHROPIC_ENDPOINT=https://your-endpoint.com \
+  -t cursor-proxy:o2a-max .
+```
+
+> `ANTHROPIC_ENDPOINT` 默认为 `https://api.anthropic.com`，如需对接第三方中转站可按上述方式配置。`ANTHROPIC_API_KEY` 建议通过 `-e` 在运行时传入，避免密钥被固化进镜像。
 
 ## 在 Cursor 中配置
 

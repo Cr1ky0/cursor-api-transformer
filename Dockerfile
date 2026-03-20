@@ -40,6 +40,14 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /app/proxy .
 
+# Runtime environment variables (can be overridden at docker run)
+ARG ANTHROPIC_ENDPOINT=
+ARG ANTHROPIC_API_KEY=
+ARG PORT=9000
+ENV ANTHROPIC_ENDPOINT=$ANTHROPIC_ENDPOINT
+ENV ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+ENV PORT=$PORT
+
 # Expose port 9000
 EXPOSE 9000
 
