@@ -14,8 +14,8 @@
 |------|--------|------|
 | `deepseek`（默认） | `proxy.go` | 对接 DeepSeek API，需要 `DEEPSEEK_API_KEY` |
 | `poe` | `proxy-poe.go` | 对接 POE API，支持 Claude 系列模型，需要 `POE_API_KEY` |
-| `o2a` | `proxy-o2a.go` | 直连 Anthropic API（OpenAI 格式转 Anthropic 格式），需要 `ANTHROPIC_API_KEY` |
-| `o2a-max` | `proxy-o2a-max.go` | 同上，伪装为 Claude CLI 客户端请求头，适合绕过某些限制，需要 `ANTHROPIC_API_KEY` |
+| `o2a` | `proxy-o2a.go` | 直连 Anthropic API（OpenAI 格式转 Anthropic 格式），可以把一些第三方中转站的API对接进来，需要 `ANTHROPIC_API_KEY` |
+| `o2a-max` | `proxy-o2a-max.go` | 同上，伪装为 Claude CLI 客户端请求头，可以使用第三方中转站API中的MAX接口（部分不行），需要 `ANTHROPIC_API_KEY` |
 
 ## 环境变量配置
 
