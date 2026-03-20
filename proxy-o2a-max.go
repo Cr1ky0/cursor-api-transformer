@@ -161,12 +161,12 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating proxy request", http.StatusInternalServerError)
 		return
 	}
+	proxyReq.Header.Set("x-api-key", apiKey)
 	proxyReq.Header.Set("Authorization", "Bearer "+apiKey)
 	proxyReq.Header.Set("anthropic-version", anthropicVersion)
 	proxyReq.Header.Set("content-type", "application/json")
 	proxyReq.Header.Set("user-agent", "claude-cli/2.1.79 (external, cli)")
 	proxyReq.Header.Set("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14,prompt-caching-scope-2026-01-05,effort-2025-11-24")
-	proxyReq.Header.Set("anthropic-dangerous-direct-browser-access", "true")
 	proxyReq.Header.Set("x-app", "cli")
 	proxyReq.Header.Set("x-stainless-lang", "js")
 	proxyReq.Header.Set("x-stainless-package-version", "0.74.0")

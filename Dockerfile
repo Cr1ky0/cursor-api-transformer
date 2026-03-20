@@ -2,6 +2,7 @@
 FROM golang:1.21-alpine AS builder
 
 # Add build argument to specify which proxy to build
+# Available variants: deepseek | poe | o2a | o2a-max
 ARG PROXY_VARIANT=deepseek
 
 # Install necessary build tools
@@ -20,11 +21,12 @@ RUN go mod download
 COPY . .
 
 # Build the application based on the selected variant
-RUN if [ "$PROXY_VARIANT" = "poe" ]; then \
-        CGO_ENABLED=0 GOOS=linux go build -tags claude -o proxy proxy-poe.go; \
-    else \
-        CGO_ENABLED=0 GOOS=linux go build -o proxy proxy.go; \
-    fi
+RUN case "$PROXY_VARIANT" in \
+        poe)     CGO_ENABLED=0 GOOS=linux go build -tags claude -o proxy proxy-poe.go ;; \
+        o2a)     CGO_ENABLED=0 GOOS=linux go build -o proxy proxy-o2a.go ;; \
+        o2a-max) CGO_ENABLED=0 GOOS=linux go build -o proxy proxy-o2a-max.go ;; \
+        *)       CGO_ENABLED=0 GOOS=linux go build -o proxy proxy.go ;; \
+    esac
 
 # Final stage
 FROM alpine:latest
