@@ -31,7 +31,7 @@ var (
 var modelNameMap = map[string]string{
 	"claude-sonnet-4.6": "claude-sonnet-4-6",
 	"claude-opus-4.6": "claude-sonnet-4-6",
-	"claude-sonnet-4.5": "claude-sonnet-4-5-20250929",
+	"claude-sonnet-4.5": "gpt-5.3-codex",
 }
 
 func init() {
